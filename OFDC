@@ -1,0 +1,99 @@
+#include <bits/stdc++.h>
+using namespace std;
+
+using ll = long long;
+using pll = pair<ll,ll>;
+using tlll = tuple<ll,ll,ll>;
+struct OFDC{
+    vector<tlll> query;
+    vector<ll> grp, sz;
+    vector<vector<pll>> tree;
+    map<pll, ll> connected_time;
+    ll n, q;
+
+    OFDC(ll n,ll q): n(n),q(q),query(n+1),grp(n+1),sz(n+1), tree(4*(q+1)) {
+        iota(grp.begin(), grp.end(),0);
+    }
+
+    void update(ll s, ll e, ll n, ll l, ll r, pll edge){
+        if(e<l||s>r) return;
+        if(s>=l&&e<=r){
+            tree[n].push_back(edge);
+            return;
+        }
+
+        ll m=(s+e)>>1;
+        update(s,m,n<<1,l,r,edge);
+        update(m+1,e,n<<1|1,l,r,edge);
+    }
+
+    ll _find(ll x) {
+        if (grp[x]==x) return x;
+        return _find(grp[x]);
+    }
+
+    pll _union(ll x, ll y) {
+        x=_find(x);
+        y=_find(y);
+        if (x!=y) {
+            if (sz[x]<sz[y]) swap(x,y);
+            grp[y]=x;
+            sz[x]+=sz[y];
+            return {x,y}; /// 부모 , 자식
+        }
+        return {-1,-1};
+    }
+
+    void dfs(ll s, ll e, ll n) {
+        vector<pll> real_connected;
+        for (auto&[u,v]:tree[n]) {
+            auto [x,y] = _union(u,v);
+            if (x!=-1) real_connected.push_back({x,y});
+        }
+
+        if (s==e) {
+            if (get<0>(query[s])==3) {
+                cout<<(_find(get<1>(query[s]))==_find(get<2>(query[s])))<<"\n";
+            }
+        }
+        else {
+            ll m=(s+e)>>1;
+            dfs(s,m,n<<1);
+            dfs(m+1,e,n<<1|1);
+        }
+        reverse(real_connected.begin(),real_connected.end());
+        for (auto&[x,y]:real_connected) {
+            sz[x]-=sz[y];
+            grp[y]=y;
+        }
+    }
+
+    void run(){
+        for(ll i=0;i<q;i++){
+            auto&[type,u,v] = query[i];
+            cin>>type>>u>>v;
+            if(u>v) swap(u,v);
+
+            if(type==1){
+                connected_time[{u,v}] = i;
+            }
+            else if(type==2){
+                update(0,q,1,connected_time[{u,v}], i, {u,v});
+                connected_time.erase({u,v});
+            }
+        }
+        for (auto&[edge,time]:connected_time) {
+            auto&[u,v]=edge;
+            update(0,q,1,time,q,{u,v}); /// 영원히 남아있는거
+        }
+        dfs(1,0,q);
+    }
+};
+
+int main(){
+    int n, q;
+    cin>>n>>q;
+    OFDC ofdc(n,q);
+
+    ofdc.run();
+}
